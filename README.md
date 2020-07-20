@@ -7,9 +7,9 @@ Please Vim, stop with these swap file messages. Just switch to the correct windo
 Why autoswap?
 -------------
 
-Dealing with swap files is annoying. Most of the time you have to deal with
-a swap file because you either have the same file open in another
-window or it is a swap file left there by a previous crash.
+Dealing with swap files is annoying. Most of the time you have to deal with a
+swap file because you either have the same file open in another window or it is
+a swap file left there by a previous crash.
 
 This plugin does for you what you would do in these cases:
 
@@ -35,7 +35,7 @@ Apple Terminal and iTerm2 as it matches based on the window name, not tab name.
 Installation
 ------------
 
-Copy the `autoswap.vim` file in your `~/.vim/plugin` directory.
+Copy the `autoswap.vim` file to your `~/.vim/plugin` directory.
 
 Or use pathogen and just clone the git repository:
 
@@ -49,21 +49,20 @@ set it in your `~/.vimrc` file:
 
     $ echo 'set title titlestring=' >> ~/.vimrc
 
-*Linux users*: you must install `wmctrl` to be able to automatically
-switch to the Vim window with the open file.
-`wmctrl` is already packaged for most distributions.
+**Linux users**: you must install `wmctrl` to be able to automatically switch to
+the Vim window with the open file. `wmctrl` is already packaged for most
+distributions.
 
-*KDE/Konsole users*: in addition to `wmctrl` you must install also
-the [`vim-konsole`](https://github.com/gergap/vim-konsole) plugin.
+**KDE/Konsole users**: in addition to `wmctrl` you must install also the
+[`vim-konsole`](https://github.com/gergap/vim-konsole) plugin.
 
-*tmux users*: if `tmux` is detected, autoswap can change the current
-pane to the one where vim is already open. `tmux` support is disabled
-by default. To enable support for `tmux` add
-`let g:autoswap_detect_tmux = 1` to your `.vimrc`.
+**tmux users**: if `tmux` is detected, autoswap can change the current pane to
+the one where vim is already open. `tmux` support is disabled by default. To
+enable support for `tmux` add `let g:autoswap_detect_tmux = 1` to your `.vimrc`.
 
-If you use Arch Linux you can install via the [`vim-autoswap-git`
-package in the AUR](https://aur.archlinux.org/packages/vim-autoswap-git/).
-The package will install this plugin and all the needed dependencies.
+If you use Arch Linux you can install via the [`vim-autoswap-git` package in the
+AUR](https://aur.archlinux.org/packages/vim-autoswap-git/). The package will
+install this plugin and all the needed dependencies.
 
 
 Authors

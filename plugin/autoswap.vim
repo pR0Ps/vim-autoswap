@@ -18,13 +18,15 @@
 "##  On Linux this plugin requires the external program     ##
 "##  wmctrl, packaged for most distributions.               ##
 "##                                                         ##
-"##  See below for the two functions that would have to be  ##
-"##  rewritten to port this plugin to other OS's.           ##
+"##                                                         ##
+"##  To port this plugin to other operating systems         ##
+"##                                                         ##
+"##    1. Add s:detectWindow_<OS> and s:switchToWindow_<OS> ##
+"##    2. Add a new elseif cases to s:detectWindow and      ##
+"##       s:switchToWindow to call them.                    ##
 "##                                                         ##
 "#############################################################
 
-
-" If already loaded, we're done...
 if exists("loaded_autoswap")
 	finish
 endif
@@ -35,57 +37,54 @@ if !exists("g:autoswap_detect_tmux")
 	let g:autoswap_detect_tmux = 0
 endif
 
-" Preserve external compatibility options, then enable full vim compatibility...
+" Preserve external compatibility options, then enable full vim compatibility
 let s:save_cpo = &cpo
 set cpo&vim
 
-" Invoke the behaviour whenever a swapfile is detected...
-"
-augroup AutoSwap
+
+" Invoke the handling whenever a swapfile is detected
+augroup autoswap
 	autocmd!
-	autocmd SwapExists *  call AS_HandleSwapfile(expand('<afile>:p'), v:swapname)
+	autocmd SwapExists * call s:handleSwapfile(expand('<afile>:p'), v:swapname)
 augroup END
 
-" The automatic behaviour...
-"
-function! AS_HandleSwapfile (filename, swapname)
+function! s:handleSwapfile(filename, swapname)
 
 	" Is file already open in another Vim session in some other window?
-	let active_window = AS_DetectActiveWindow(a:filename, a:swapname)
+	let active_window = s:detectWindow(a:filename, a:swapname)
 
-	" If so, go there instead and terminate this attempt to open the file...
+	" If so, go there instead and terminate this attempt to open the file
 	if (strlen(active_window) > 0)
-		call AS_DelayedMsg('Switched to existing session in another window')
-		call AS_SwitchToActiveWindow(active_window)
+		call s:showMsg('Switched to existing session in another window')
+		call s:switchToWindow(active_window)
 		let v:swapchoice = 'q'
 
-	" Otherwise, if swapfile is older than file itself, just get rid of it...
+	" Otherwise, if swapfile is older than file itself, just get rid of it
 	elseif getftime(v:swapname) < getftime(a:filename)
-		call AS_DelayedMsg('Old swapfile detected... and deleted')
+		call s:showMsg('Old swapfile detected and deleted')
 		call delete(v:swapname)
 		let v:swapchoice = 'e'
 
-	" Otherwise, open file read-only...
+	" Otherwise, open file read-only
 	else
-		call AS_DelayedMsg('Swapfile detected, opening read-only')
+		call s:showMsg('Swapfile detected, opening read-only')
 		let v:swapchoice = 'o'
 	endif
 endfunction
 
 
 " Print a message after the autocommand completes
-" (so you can see it, but don't have to hit <ENTER> to continue)...
-"
-function! AS_DelayedMsg (msg)
-	" A sneaky way of injecting a message when swapping into the new buffer...
+" (so you can see it, but don't have to hit <ENTER> to continue)
+function! s:showMsg (msg)
+	" A sneaky way of injecting a message when swapping into the new buffer
 	augroup AutoSwap_Msg
 		autocmd!
-		" Print the message on finally entering the buffer...
+		" Print the message on finally entering the buffer
 		autocmd BufWinEnter *  echohl WarningMsg
 		exec 'autocmd BufWinEnter *  echon "\r'.printf("%-60s", a:msg).'"'
 		autocmd BufWinEnter *  echohl NONE
 
-		" And then remove these autocmds, so it's a "one-shot" deal...
+		" And then remove these autocmds, so it's a "one-shot" deal
 		autocmd BufWinEnter *  augroup AutoSwap_Msg
 		autocmd BufWinEnter *  autocmd!
 		autocmd BufWinEnter *  augroup END
@@ -93,39 +92,28 @@ function! AS_DelayedMsg (msg)
 endfunction
 
 
-"#################################################################
-"##                                                             ##
-"##  To port this plugin to other operating systems             ##
-"##                                                             ##
-"##    1. Rewrite the Detect and the Switch function            ##
-"##    2. Add a new elseif case to the list of OS               ##
-"##                                                             ##
-"#################################################################
-
-function! AS_RunningTmux ()
+function! s:runningTmux ()
 	if $TMUX != ""
 		return 1
 	endif
 	return 0
 endfunction
 
-" Return an identifier for a terminal window already editing the named file
-" (Should either return a string identifying the active window,
-"  or else return an empty string to indicate "no active window")...
-"
-function! AS_DetectActiveWindow (filename, swapname)
-	if g:autoswap_detect_tmux && AS_RunningTmux()
-		let active_window = AS_DetectActiveWindow_Tmux(a:swapname)
+" Return an identifier for a terminal window already editing the file
+" or an empty string if the window couldn't be found.
+function! s:detectWindow (filename, swapname)
+	if g:autoswap_detect_tmux && s:runningTmux()
+		let active_window = s:detectWindow_Tmux(a:swapname)
 	elseif has('macunix')
-		let active_window = AS_DetectActiveWindow_Mac(a:filename)
+		let active_window = s:detectWindow_Mac(a:filename)
 	elseif has('unix')
-		let active_window = AS_DetectActiveWindow_Linux(a:filename)
+		let active_window = s:detectWindow_Linux(a:filename)
 	endif
 	return active_window
 endfunction
 
 " TMUX: Detection function for tmux, uses tmux
-function! AS_DetectActiveWindow_Tmux (swapname)
+function! s:detectWindow_Tmux (swapname)
 	let pid = systemlist('fuser '.a:swapname.' 2>/dev/null | grep -E -o "[0-9]+"')
 	if (len(pid) == 0)
 		return ''
@@ -147,8 +135,8 @@ function! AS_DetectActiveWindow_Tmux (swapname)
 	return window[0]
 endfunction
 
-" LINUX: Detection function for Linux, uses mwctrl
-function! AS_DetectActiveWindow_Linux (filename)
+" LINUX: Detection function for Linux, uses wmctrl
+function! s:detectWindow_Linux (filename)
 	let shortname = fnamemodify(a:filename,":t")
 	let find_win_cmd = 'wmctrl -l | grep -i " '.shortname.' .*vim" | tail -n1 | cut -d" " -f1'
 	let active_window = system(find_win_cmd)
@@ -156,7 +144,7 @@ function! AS_DetectActiveWindow_Linux (filename)
 endfunction
 
 " MAC: Detection function for Mac OSX, uses osascript
-function! AS_DetectActiveWindow_Mac (filename)
+function! s:detectWindow_Mac (filename)
 	let shortname = fnamemodify(a:filename,":t")
 	if ($TERM_PROGRAM == 'Apple_Terminal')
 		let find_win_cmd = 'osascript -e ''tell application "Terminal" to get the id of every window whose (name begins with "'.shortname.' " and name contains "VIM")'''
@@ -171,20 +159,19 @@ function! AS_DetectActiveWindow_Mac (filename)
 endfunction
 
 
-" Switch to terminal window specified...
-"
-function! AS_SwitchToActiveWindow (active_window)
-	if g:autoswap_detect_tmux && AS_RunningTmux()
-		call AS_SwitchToActiveWindow_Tmux(a:active_window)
+" Switch to the specified window
+function! s:switchToWindow (active_window)
+	if g:autoswap_detect_tmux && s:runningTmux()
+		call s:switchToWindow_Tmux(a:active_window)
 	elseif has('macunix')
-		call AS_SwitchToActiveWindow_Mac(a:active_window)
+		call s:switchToWindow_Mac(a:active_window)
 	elseif has('unix')
-		call AS_SwitchToActiveWindow_Linux(a:active_window)
+		call s:switchToWindow_Linux(a:active_window)
 	endif
 endfunction
 
 " TMUX: Switch function for Tmux
-function! AS_SwitchToActiveWindow_Tmux (active_window)
+function! s:switchToWindow_Tmux (active_window)
 	let pane_info = split(a:active_window)
 	let session = pane_info[1]
 	let window = pane_info[2]
@@ -193,12 +180,12 @@ function! AS_SwitchToActiveWindow_Tmux (active_window)
 endfunction
 
 " LINUX: Switch function for Linux, uses wmctrl
-function! AS_SwitchToActiveWindow_Linux (active_window)
+function! s:switchToWindow_Linux (active_window)
 	call system('wmctrl -i -a "'.a:active_window.'"')
 endfunction
 
 " MAC: Switch function for Mac, uses osascript
-function! AS_SwitchToActiveWindow_Mac (active_window)
+function! s:switchToWindow_Mac (active_window)
 	if ($TERM_PROGRAM == 'Apple_Terminal')
 		call system('osascript -e ''tell application "Terminal" to set frontmost of window id '.a:active_window.' to true''')
 	elseif ($TERM_PROGRAM == 'iTerm.app')
