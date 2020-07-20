@@ -6,9 +6,14 @@
 "#############################################################
 "##                                                         ##
 "##  Note that this plugin only works if your Vim           ##
-"##  configuration includes:                                ##
+"##  configuration does not override the `title` or         ##
+"##  `titlestring` settings configured below.               ##
 "##                                                         ##
-"##     set title titlestring=                              ##
+"##  Note that this plugin uses window titles to find and   ##
+"##  switch to windows. If the title for the file isn't set ##
+"##  (ex: the unfocused buffer in a split) or is truncated  ##
+"##  (ex: window isn't wide enough to fit the entire title) ##
+"##  then switching to the window won't work.               ##
 "##                                                         ##
 "##  On MacOS this plugin only works fully for Vim sessions ##
 "##  running in Apple Terminal or iTerm2. Other terminals   ##
@@ -40,6 +45,18 @@ endif
 " Preserve external compatibility options, then enable full vim compatibility
 let s:save_cpo = &cpo
 set cpo&vim
+
+" Enable and set window titles to something we can parse
+" If you change this you will also need to change the
+" s:getWindowTitle function below
+set title titlestring=%{expand(\"%:t\")}\ (%{expand(\"%:~:h\")})\ -\ VIM
+
+" Gets the predicted window title based on the filename
+function! s:getWindowTitle(filename)
+	let relparent = fnamemodify(a:filename,":~:h")
+	let name = fnamemodify(a:filename,":t")
+	return name . ' ('.relparent.') - VIM'
+endfunction
 
 
 " Invoke the handling whenever a swapfile is detected
@@ -137,19 +154,17 @@ endfunction
 
 " LINUX: Detection function for Linux, uses wmctrl
 function! s:detectWindow_Linux (filename)
-	let shortname = fnamemodify(a:filename,":t")
-	let find_win_cmd = 'wmctrl -l | grep -i " '.shortname.' .*vim" | tail -n1 | cut -d" " -f1'
+	let find_win_cmd = 'wmctrl -l | grep "'.s:getWindowTitle(a:filename).'" | tail -n1 | cut -d" " -f1'
 	let active_window = system(find_win_cmd)
 	return (active_window =~ '0x' ? active_window : "")
 endfunction
 
 " MAC: Detection function for Mac OSX, uses osascript
 function! s:detectWindow_Mac (filename)
-	let shortname = fnamemodify(a:filename,":t")
 	if ($TERM_PROGRAM == 'Apple_Terminal')
-		let find_win_cmd = 'osascript -e ''tell application "Terminal" to get the id of every window whose (name begins with "'.shortname.' " and name contains "VIM")'''
+		let find_win_cmd = 'osascript -e ''tell application "Terminal" to get the id of every window whose (name contains "'.s:getWindowTitle(a:filename).'")'''
 	elseif ($TERM_PROGRAM == 'iTerm.app')
-		let find_win_cmd = 'osascript -e ''tell application "iTerm2" to get the index of every window whose (name contains "'.shortname.' " and name contains "VIM")'''
+		let find_win_cmd = 'osascript -e ''tell application "iTerm2" to get the index of every window whose (name contains "'.s:getWindowTitle(a:filename).'")'''
 	else
 		return ''
 	endif
