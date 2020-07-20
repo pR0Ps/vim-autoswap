@@ -15,8 +15,8 @@
 "##  (ex: window isn't wide enough to fit the entire title) ##
 "##  then switching to the window won't work.               ##
 "##                                                         ##
-"##  On MacOS this plugin only works fully for Vim sessions ##
-"##  running in Apple Terminal or iTerm2. Other terminals   ##
+"##  On macOS this plugin only fully works for Vim sessions ##
+"##  in Apple Terminal, iTerm2, and MacVim. Other terminals ##
 "##  and GUI Vims are partially supported, but detecting    ##
 "##  and switching to the active window will not work.      ##
 "##                                                         ##
@@ -159,18 +159,18 @@ function! s:detectWindow_Linux (filename)
 	return (active_window =~ '0x' ? active_window : "")
 endfunction
 
-" MAC: Detection function for Mac OSX, uses osascript
+" MAC: Detection function for macOS, uses osascript
 function! s:detectWindow_Mac (filename)
-	if ($TERM_PROGRAM == 'Apple_Terminal')
-		let find_win_cmd = 'osascript -e ''tell application "Terminal" to get the id of every window whose (name contains "'.s:getWindowTitle(a:filename).'")'''
-	elseif ($TERM_PROGRAM == 'iTerm.app')
-		let find_win_cmd = 'osascript -e ''tell application "iTerm2" to get the index of every window whose (name contains "'.s:getWindowTitle(a:filename).'")'''
-	else
-		return ''
-	endif
-	let active_window = system(find_win_cmd)
-	let active_window = substitute(active_window, '^\d\+\zs\_.*', '', '')
-	return (active_window =~ '\d\+' ? active_window : "")
+	" Will attempt to find windows from a few common applications
+	" If found, will return '<application name> <window id>', otherwise nothing
+	let find_win_cmd = 'osascript
+				\ -e ''repeat with app_name in {"MacVim", "Terminal", "iTerm"}''
+				\ -e ''  try''
+				\ -e ''    tell application app_name to return app_name & " " & (id of the first window whose name contains "' . s:getWindowTitle(a:filename) . '")''
+				\ -e ''  end try''
+				\ -e ''end repeat''
+				\'
+	return get(systemlist(find_win_cmd), 0, '')
 endfunction
 
 
@@ -199,21 +199,24 @@ function! s:switchToWindow_Linux (active_window)
 	call system('wmctrl -i -a "'.a:active_window.'"')
 endfunction
 
-" MAC: Switch function for Mac, uses osascript
+" MAC: Switch function for macOS, uses osascript
 function! s:switchToWindow_Mac (active_window)
-	if ($TERM_PROGRAM == 'Apple_Terminal')
-		call system('osascript -e ''tell application "Terminal" to set frontmost of window id '.a:active_window.' to true''')
-	elseif ($TERM_PROGRAM == 'iTerm.app')
-		let switch_win_cmd = 'osascript -e ''tell application "iTerm"''
-					\ -e ''repeat with mywindow in windows''
-					\ -e ''   if index of mywindow is ' .a:active_window. '''
-					\ -e ''     select mywindow''
-					\ -e ''   return''
-					\ -e ''   end if''
-					\ -e '' end repeat''
-					\ -e ''end tell'''
-		call system(switch_win_cmd)
+	" Expected format is '<application name> <window id>'
+	let target = split(a:active_window, " ")
+	if len(target) != 2
+		return
 	endif
+
+	let switch_win_cmd = 'osascript
+				\ -e ''tell application "' . target[0] . '"''
+				\ -e ''  activate''
+				\ -e ''  delay 0.1''
+				\ -e ''  set index of (first window whose id is ' . target[1] . ') to 1''
+				\ -e ''  set bid to id''
+				\ -e ''  tell application "System Events" to tell (first process whose bundle identifier is bid) to perform action "AXRaise" of first window''
+				\ -e ''end tell''
+				\'
+	call system(switch_win_cmd)
 endfunction
 
 " Restore previous external compatibility options

@@ -21,15 +21,28 @@ This plugin does for you what you would do in these cases:
 Damian Conway presented this plugin at OSCON 2013 in his talk
 "[More instantly better Vim](http://programming.oreilly.com/2013/10/more-instantly-better-vim.html)".
 
-The original version of this plugin (only for MacOS) is available at <http://is.gd/IBV2013>,
-together with other plugins presented in the same talk. This version has
-been modified to work also on Linux systems. Both Vim and GVim are supported.
+
+Supports
+--------
+Vim: Any version compiled with the `+title` feature.
+
+Linux: gVim and Vim instances running in terminals that support changing their
+       window titles.
+
+macOS: MacVim and Vim instances running in Apple Terminal or iTerm2
+
 
 Limitations
 -----------
 
+This plugin works based on window titles. If the window title is not set or is
+not detectable by the plugin then the window will not be found (and therefore
+not switched to).
+
 At the moment this plugin does not reliably detect files open within tabs in
-Apple Terminal and iTerm2 as it matches based on the window name, not tab name.
+iTerm2 as it matches based on the window name, not tab name. Apple Terminal
+exposes each tab as a "window", allowing it to work even if your Vim instance is
+running in a tab in the background.
 
 
 Installation
@@ -69,6 +82,7 @@ Authors
 * Gioele Barabucci <http://svario.it/gioele> (made the plugin Linux-compatible, maintainer)
 * Damian Conway <http://damian.conway.org> (original author)
 * Greg Lutostanski (tmux support)
+* [@pR0Ps](https://github.com/pR0Ps) (more accurate title matching, macOS improvements)
 
 
 Development
